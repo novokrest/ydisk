@@ -1,113 +1,140 @@
+
+
+#include <libnautilus-extension/nautilus-extension-types.h>
+#include <gtk/gtk.h>
 #include <libnautilus-extension/nautilus-menu-provider.h>
+#include <libnautilus-extension/nautilus-file-info.h>
+#include <libnautilus-extension/nautilus-info-provider.h>
 
-//вся суть в foo_extension_get_file_items
+/*Extension*/
+typedef struct
+{
+	GObjectClass parent_slot;
+} YdiskExtensionClass;
 
 typedef struct
 {
-    GObject parent_slot;
-} FooExtension;
+	GObject parent_slot;
+} YdiskExtension;
 
-typedef struct
-{
-    GObjectClass parent_slot;
-} FooExtensionClass;
+static ydisk_extension_class_init (YdiskExtensionClass *class);
+static ydisk_extension_class_init (YdiskExtensionClass *class) {}
 
-static void foo_extension_class_init    (FooExtensionClass *class);
-static void foo_extension_instance_init (FooExtension      *img);
+static ydisk_extension_instance_init (YdiskExtensionClass *inst);
+static ydisk_extension_instance_init (YdiskExtensionClass *inst) {}
 
-static GList *
-foo_extension_get_file_items (NautilusMenuProvider *provider,
-			      GtkWidget *window,
-			      GList *files);
-
-/* Interfaces */
-
-static void
-foo_extension_menu_provider_iface_init (NautilusMenuProviderIface *iface) {
-  iface->get_file_items = foo_extension_get_file_items;
-  return;
-}
-
-/* Extension */
-static void foo_extension_class_init(FooExtensionClass *class)
-{
-}
-
-static void foo_extension_instance_init(FooExtension *img)
-{
-}
-
+/*Types*/
+static GType ydisk_extension_type;
 static GType provider_types[1];
 
-static GType foo_extension_type;
-
-static void foo_extension_register_type(GTypeModule *module)
+GType ydisk_extension_get_type (void)
 {
-    static const GTypeInfo info = {
-                sizeof(FooExtensionClass),
-                (GBaseInitFunc) NULL,
-                (GBaseFinalizeFunc) NULL,
-                (GClassInitFunc) foo_extension_class_init,
-                NULL,
-                NULL,
-                sizeof (FooExtension),
-                0,
-                (GInstanceInitFunc) foo_extension_instance_init,
-                };
-
-    static const GInterfaceInfo menu_provider_iface_info = {
-        (GInterfaceInitFunc) foo_extension_menu_provider_iface_init,
-        NULL,
-        NULL
-    };
-
-    foo_extension_type = g_type_module_register_type(module,
-                              G_TYPE_OBJECT,
-                              "FooExtension",
-                              &info, 0);
-
-
-    g_type_module_add_interface (module,
-                                 foo_extension_type,
-                                 NAUTILUS_TYPE_MENU_PROVIDER,
-                                 &menu_provider_iface_info);
+	return ydisk_extension_type;
 }
 
-GType foo_extension_get_type(void)
-{
-    return foo_extension_type;
-}
+/*Interface*/
 
-/* Extension initialization */
-void nautilus_module_initialize (GTypeModule  *module)
-{
-    foo_extension_register_type(module);
-    provider_types[0] = foo_extension_get_type();
-}
 
-void nautilus_module_shutdown(void)
-{
-    /* Any module-specific shutdown */
-}
 
-void nautilus_module_list_types (const GType **types, int *num_types)
+static GList * ydisk_nautilus_get_menu_items (NautilusMenuProvider * provider,
+	GtkWidget * window, 
+	GList * files)
 {
-    *types = provider_types;
-    *num_types = G_N_ELEMENTS (provider_types);
+	NautilusMenuItem *root_item, *item_first, *item_second;
+	GList *items = NULL;
+	root_item = nautilus_menu_item_new ("ydisk", "Ydisk", "root", "ydisk");
+	NautilusMenu *sub_menu = nautilus_menu_new ();
+
+	//g_warning("before %x, %x", (size_t)root_item, (size_t)sub_menu);
+	nautilus_menu_item_set_submenu (root_item, sub_menu);
+
+	//g_warning("after");
+
+	item_first = nautilus_menu_item_new ("ydisk1", "_Synchronize", "sync", "ydisk");
+	item_second = nautilus_menu_item_new ("ydisk2", "_Unsynchronize", "unsync", "ydisk");
+	nautilus_menu_append_item (sub_menu, item_first);
+	nautilus_menu_append_item (sub_menu, item_second);
+	
+	if (root_item != NULL)
+		items = g_list_append (items, root_item);
+	//items = g_list_prepend (items, item_first);
+	//items = g_list_append (items, item_second);
+
+	return items;
 }
 
 static GList *
-foo_extension_get_file_items (NautilusMenuProvider *provider,
-			      GtkWidget *window,
-			      GList *files)
+ydisk_nautilus_get_bg_menu_items (NautilusMenuProvider * provider,
+				      GtkWidget * window,
+				      NautilusFileInfo * folder)
 {
-	NautilusMenuItem *item;
-	GList *ret;
+	GList * files = NULL;
+	GList * items = NULL;
 
-	item = nautilus_menu_item_new ("FooExtension::do_stuff",
-				       "Do IMPORTANT FOO STUFF",
-				       "Do important foo-related stuff to the selected files",
-				       NULL);
-	ret = g_list_append (0, item);
-	return ret;
+	files = g_list_prepend (files, folder);
+	items = ydisk_nautilus_get_menu_items (provider, window, files);
+	files = g_list_remove (files, folder);
+	g_list_free (files);
+
+	return items;
+}
+
+static void ydisk_nautilus_menu_provider_iface_init (NautilusMenuProviderIface *iface)
+{
+	iface->get_file_items = ydisk_nautilus_get_menu_items;
+	//iface->get_background_items = ydisk_nautilus_get_bg_menu_items;
+	return;
+}
+
+static void ydisk_extension_register_type (GTypeModule *module)
+{
+	static const GTypeInfo info = {
+		sizeof(YdiskExtensionClass),
+		(GBaseInitFunc) NULL,
+		(GBaseFinalizeFunc) NULL,
+		(GClassInitFunc) ydisk_extension_class_init,
+		NULL,
+		NULL,
+		sizeof(YdiskExtension),
+		0,
+		(GInstanceInitFunc) ydisk_extension_instance_init,
+		};
+
+	ydisk_extension_type = g_type_module_register_type (module, G_TYPE_OBJECT, "YdiskExtension", &info, 0);
+
+	static const GInterfaceInfo menu_provider_iface_info = {
+		(GInterfaceInitFunc) ydisk_nautilus_menu_provider_iface_init,
+		NULL,
+		NULL
+		};
+
+	g_type_module_add_interface (module, 
+		ydisk_extension_type, 
+		NAUTILUS_TYPE_MENU_PROVIDER, 
+		&menu_provider_iface_info);
+}
+
+
+/*Extension initialization*/
+void nautilus_module_initialize (GTypeModule *module)
+{
+
+#ifdef ENABLE_NLS
+	bindtextdomain (GETTEXT_PACKAGE, GNOMELOCALEDIR);
+	bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+	textdomain (GETTEXT_PACKAGE);
+#endif
+	ydisk_extension_register_type (module);
+	provider_types[0] = ydisk_extension_get_type ();
+}
+
+void nautilus_module_shutdown (void)
+{
+	/*No specific shutdown*/
+}
+
+void nautilus_module_list_types (const GType** types, int* num_types)
+{
+	*types = provider_types;
+	*num_types = G_N_ELEMENTS (provider_types);
 }

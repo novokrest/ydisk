@@ -50,8 +50,8 @@ static GList * ydisk_nautilus_get_menu_items (NautilusMenuProvider * provider,
 
 	//g_warning("after");
 
-	item_first = nautilus_menu_item_new ("ydisk1", "_Synchronize", "sync", "ydisk");
-	item_second = nautilus_menu_item_new ("ydisk2", "_Unsynchronize", "unsync", "ydisk");
+	item_first = nautilus_menu_item_new ("sync", "_Synchronize", "sync", "ydisk");
+	item_second = nautilus_menu_item_new ("unsync", "_Unsynchronize", "unsync", "ydisk");
 	nautilus_menu_append_item (sub_menu, item_first);
 	nautilus_menu_append_item (sub_menu, item_second);
 	

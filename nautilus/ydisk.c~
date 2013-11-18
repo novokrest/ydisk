@@ -1,16 +1,10 @@
 
-#include <gtk/gtk.h>
+
 #include <libnautilus-extension/nautilus-extension-types.h>
+#include <gtk/gtk.h>
 #include <libnautilus-extension/nautilus-menu-provider.h>
 #include <libnautilus-extension/nautilus-file-info.h>
 #include <libnautilus-extension/nautilus-info-provider.h>
-
-#include <dbus/dbus.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 
 /*Extension*/
 typedef struct
@@ -40,89 +34,13 @@ GType ydisk_extension_get_type (void)
 
 /*Interface*/
 
-void sendsignal(char* sigvalue) 
-{
-	DBusMessage* msg;
-	DBusMessageIter* args;
-	DBusConnection* conn;
-	DBusError err;
-	int ret;
-	dbus_uint32_t serial = 0;
-
-	printf("Sending signal with value %s\n", sigvalue);
-
-	dbus_error_init (&err);
-
-	conn = dbus_bus_get(DBUS_BUS_SESSION, &err);
-	if (dbus_error_is_set(&err)) {
-		fprintf(stderr, "Connection Error (%s)\n", err.message);
-		dbus_error_free(&err);
-	}
-	if (NULL == conn) {
-		exit(1);	
-	}
-
-	ret = dbus_bus_request_name(conn, "test.signal.source", DBUS_NAME_FLAG_REPLACE_EXISTING, &err);
-	if (dbus_error_is_set(&err)) {
-      fprintf(stderr, "Name Error (%s)\n", err.message);
-      dbus_error_free(&err);
-	}
-	if (DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER != ret) {
-      exit(1);
-	}
-
-	msg = dbus_message_new_signal("/test/signal/Object", // object name of the signal
-                                 "test.signal.Type", // interface name of the signal
-                                 "Test"); // name of the signal
-	if (NULL == msg)
-	{
-		fprintf(stderr, "Message Null\n");
-		exit(1);
-	}
-	dbus_message_iter_init_append(msg, &args);
-	if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &sigvalue)) {
-		fprintf(stderr, "Out Of Memory!\n");
-		exit(1);
-	}
-
-	if (!dbus_connection_send(conn, msg, &serial)) {
-		fprintf(stderr, "Out Of Memory!\n");
-		exit(1);
-	}
-	dbus_connection_flush(conn);
-
-	printf("Signal Sent\n");
-
-   // free the message
-	dbus_message_unref(msg);
-}
-
-
-static void do_sync_method (NautilusMenuItem *item, gpointer user_data)
-{
-	GList *files;
-	GList *l;
-
-	files = g_object_get_data (item, "foo_extension_files");
-	
-	for (l = files; l != NULL; l = l->next) {
-		NautilusFileInfo *file = NAUTILUS_FILE_INFO (l->data);
-		char *name;
-		name = nautilus_file_info_get_uri (file);	
-		g_print("File for synchronized: %s\n", name);
-		g_free(name);
-	}
-
-	sendsignal("Sync");
-} 
 
 
 static GList * ydisk_nautilus_get_menu_items (NautilusMenuProvider * provider,
-							GtkWidget * window, 
-							GList * files)
-{	
-
-	NautilusMenuItem *root_item, *item_sync, *item_unsync;
+	GtkWidget * window, 
+	GList * files)
+{
+	NautilusMenuItem *root_item, *item_first, *item_second;
 	GList *items = NULL;
 	root_item = nautilus_menu_item_new ("ydisk", "Ydisk", "root", "ydisk");
 	NautilusMenu *sub_menu = nautilus_menu_new ();
@@ -132,15 +50,10 @@ static GList * ydisk_nautilus_get_menu_items (NautilusMenuProvider * provider,
 
 	//g_warning("after");
 
-	item_sync = nautilus_menu_item_new ("sync", "_Synchronize", "sync", "ydisk");
-	g_signal_connect (item_sync, "activate", G_CALLBACK(do_sync_method), provider);
-	g_object_set_data_full (item_sync, "foo_extension_files", 
-							nautilus_file_info_list_copy (files),
-							(GDestroyNotify)nautilus_file_info_list_free);
-
-	item_unsync = nautilus_menu_item_new ("unsync", "_Unsynchronize", "unsync", "ydisk");
-	nautilus_menu_append_item (sub_menu, item_sync);
-	nautilus_menu_append_item (sub_menu, item_unsync);
+	item_first = nautilus_menu_item_new ("ydisk1", "_Synchronize", "sync", "ydisk");
+	item_second = nautilus_menu_item_new ("ydisk2", "_Unsynchronize", "unsync", "ydisk");
+	nautilus_menu_append_item (sub_menu, item_first);
+	nautilus_menu_append_item (sub_menu, item_second);
 	
 	if (root_item != NULL)
 		items = g_list_append (items, root_item);

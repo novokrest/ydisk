@@ -27,55 +27,48 @@ else (DBUS_FOUND)
 message ("==DBus not found==")
 endif (DBUS_FOUND)
 
-pkg_check_modules(_DBUS_PC REQUIRED dbus-1)
-
-FIND_PATH(DBUS_INCLUDE_DIR dbus/dbus.h)
-FIND_LIBRARY(DBUS_LIBRARIES NAMES dbus-1)
-message (${_DBUS_PC_INCLUDE_DIRS})
-MESSAGE(${DBUS_INCLUDE_DIR})
-
-message (${_DBUS_PC_LIBDIR})
-MESSAGE(${DBUS_LIBRARIES})
+include_directories (${DBUS_INCLUDE_DIR})
+include_directories (${DBUS_ARCH_INCLUDE_DIR})
+include_directories (${DBUS_LIBDIR})
 
 
-find_path (DBUS_INCLUDE_DIR dbus/dbus.h 
-	${_DBUS_PC_INCLUDE_DIRS}
-	/usr/include
-	/usr/include/dbus-1.0
-	/usr/local/include)
+#DBus-Glib
+
+if (DBUSGLIB_FOUND)
+message ("==DBUSGLIB found==")
+else (DBUSGLIB_FOUND)
+message ("==DBUSGLIB not found==")
+endif (DBUSGLIB_FOUND)
+include_directories (${DBUSGLIB_INCLUDE_DIRS})
 
 
-FIND_PATH(DBUS_ARCH_INCLUDE_DIR dbus/dbus-arch-deps.h
-    ${_DBUS_PC_INCLUDE_DIRS}
-    /usr/lib${LIB_SUFFIX}/include
-    /usr/lib${LIB_SUFFIX}/dbus-1.0/include
-    /usr/lib64/include
-    /usr/lib64/dbus-1.0/include
-    /usr/lib/include
-    /usr/lib/dbus-1.0/include
+#Library
+
+FIND_LIBRARY(DBUSGLIB_LIBRARY
+  NAMES 
+  dbus-glib-1
+  PATHS
+  ${DBUSGLIB_LIBRARY_DIR}
+  DOC 
+  ${DBUSGLIB_LIB_PATH_DESCRIPTION}
+  #NO_DEFAULT_PATH TODO fix PKGCONFIG_LIBRARY_DIR when pkg-config returns multiple directories
   )
 
+SET(DBUSGLIB_LIBRARIES ${DBUSGLIB_LIBRARY} ${DBUS_LIBRARIES}) 
 
-include_directories(${_DBUS_PC_INCLUDE_DIRS})
-include_directories(${_DBUS_PC_LIBDIR})
+IF(DBUSGLIB_LIBRARIES)
+  MESSAGE(STATUS "D-Bus glib library set to  ${DBUSGLIB_LIBRARIES}")
+ELSE(DBUSGLIB_LIBRARIES)
+  MESSAGE(FATAL "D-Bus glib library cannot be found")
+ENDIF(DBUSGLIB_LIBRARIES)
 
 
-#link libraries
-
-link_directories (${_DBUS_PC_LIBDIR})
-add_library(${DBUS_LIBRARIES} SHARED IMPORTED)
-#link_directories (/lib/x86_64-linux-gnu/)
-#add_library(/lib/x86_64-linux-gnu/libdbus-1.so.3.5.8 SHARED IMPORTED)
-
+#link
 add_library(ydisk SHARED ydisk.c)
 
-set_target_properties(ydisk
-      PROPERTIES
-      LINK_INTERFACE_LIBRARIES /lib/x86_64-linux-gnu/libdbus-1.so.3.5.8
-  )
-
 target_link_libraries (ydisk ${DBUS_LIBRARIES})
-#target_link_libraries (ydisk /lib/x86_64-linux-gnu/libdbus-1.so.3.5.8)
+target_link_libraries (ydisk ${DBUSGLIB_LIBRARIES})
+message (${DBUSGLIB_LIBRARIES})
 
 install(TARGETS ydisk DESTINATION /usr/lib/nautilus/extensions-3.0/)
 

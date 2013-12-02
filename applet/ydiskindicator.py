@@ -167,7 +167,7 @@ class YdiskTray(threading.Thread, dbus.service.Object):
     def SetDefaultDirMethod(self, message):
 
         default_dir = message[7:]
-        print ("I receive unsync msg: %s\n" % default_dir)
+        print ("I receive default_dir msg: %s\n" % default_dir)
         if self.default_dir != default_dir:
             self.default_dir = default_dir
             self.WriteConfig()

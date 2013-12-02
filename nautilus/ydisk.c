@@ -131,13 +131,19 @@ static void Sync_Unsync (NautilusMenuItem *item, YdiskExtension * yde, char item
 		case 's':
 			g_warning("Synchronize");
 			service_method = "SyncMethod";
-			data_files = "sync_files";
+			data_files = "sync_dirs";
 			break;
 
 		case 'u':	
 			g_warning("Unsynchronize");
 			service_method = "UnsyncMethod";
-			data_files = "unsync_files";
+			data_files = "unsync_dirs";
+			break;
+
+		case 'd':
+			g_warning("Set_default_dir");
+			service_method = "SetDefaultDirMethod";
+			data_files = "default_dir";
 			break;
 	}
 	
@@ -183,6 +189,15 @@ static void Do_unsynchronize (NautilusMenuItem *item, gpointer user_data)
 }
 
 
+static void Do_set_default_dir (NautilusMenuItem *item, gpointer user_data)
+{
+	g_warning("Do_set_default_dir");
+
+	YdiskExtension * yde = YDISK_EXTENSION (user_data);
+	Sync_Unsync (item, yde, 'd');
+}
+
+
 static bool ChooseDirectory (GList * files)
 {
 	g_warning("ChooseDirectory");
@@ -218,7 +233,8 @@ static GList * ydisk_nautilus_get_menu_items (NautilusMenuProvider * provider,
 	{	
 		g_warning("after ChooseDirectory");		
 
-		NautilusMenuItem *root_item, *item_sync, *item_unsync;
+		NautilusMenuItem *root_item;
+		NautilusMenuItem *item_sync, *item_unsync, *item_default;
 		root_item = nautilus_menu_item_new ("ydisk", "Ydisk", "root", "ydisk");
 
 		NautilusMenu *sub_menu = nautilus_menu_new ();
@@ -226,18 +242,25 @@ static GList * ydisk_nautilus_get_menu_items (NautilusMenuProvider * provider,
 
 		item_sync = nautilus_menu_item_new ("sync_item", "_Synchronize", "sync", "ydisk");
 		g_signal_connect (item_sync, "activate", G_CALLBACK(Do_synchronize), provider);
-		g_object_set_data_full ((GObject*)item_sync, "sync_files", 
+		g_object_set_data_full ((GObject*)item_sync, "sync_dirs", 
 							nautilus_file_info_list_copy (files),
 							(GDestroyNotify)nautilus_file_info_list_free);
 
 		item_unsync = nautilus_menu_item_new ("unsync_item", "_Unsynchronize", "unsync", "ydisk");
 		g_signal_connect (item_unsync, "activate", G_CALLBACK(Do_unsynchronize), provider);
-		g_object_set_data_full ((GObject*)item_unsync, "unsync_files", 
+		g_object_set_data_full ((GObject*)item_unsync, "unsync_dirs", 
+							nautilus_file_info_list_copy (files),
+							(GDestroyNotify)nautilus_file_info_list_free);
+
+		item_default = nautilus_menu_item_new ("default_item", "_Set as local disk", "default", "ydisk");
+		g_signal_connect (item_default, "activate", G_CALLBACK(Do_set_default_dir), provider);
+		g_object_set_data_full ((GObject*)item_default, "default_dir", 
 							nautilus_file_info_list_copy (files),
 							(GDestroyNotify)nautilus_file_info_list_free);
 
 		nautilus_menu_append_item (sub_menu, item_sync);
 		nautilus_menu_append_item (sub_menu, item_unsync);
+		nautilus_menu_append_item (sub_menu, item_default);
 	
 		if (root_item != NULL) {
 			items = g_list_append (items, root_item);

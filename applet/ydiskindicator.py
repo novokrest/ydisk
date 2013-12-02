@@ -102,6 +102,8 @@ class YdiskTray(threading.Thread, dbus.service.Object):
             for line in config_file.readlines():
                 if 'exclude-dirs=' in line:
                     self.exclude_dirs_list = line.split('\"')[1].split(',')
+                    if '' in self.exclude_dirs_list:
+                        self.exclude_dirs_list.remove('')
                     continue
                 if 'dir=' in line:
                     self.default_dir = line.split('\"')[1]
@@ -160,6 +162,15 @@ class YdiskTray(threading.Thread, dbus.service.Object):
             self.exclude_dirs_list.append(unsync_dir)
             self.WriteConfig()
 
+
+    @dbus.service.method('edu.ydisk.Service.Methods')
+    def SetDefaultDirMethod(self, message):
+
+        default_dir = message[7:]
+        print ("I receive unsync msg: %s\n" % default_dir)
+        if self.default_dir != default_dir:
+            self.default_dir = default_dir
+            self.WriteConfig()
 
 
     def run(self):

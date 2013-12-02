@@ -25,11 +25,36 @@ if (DBUS_FOUND)
 message ("==DBus found==")
 else (DBUS_FOUND)
 message ("==DBus not found==")
+
+pkg_check_modules(_DBUS_PC REQUIRED dbus-1)
+
+FIND_PATH(DBUS_INCLUDE_DIR dbus/dbus.h
+    ${_DBUS_PC_INCLUDE_DIRS}
+    /usr/include
+    /usr/include/dbus-1.0
+    /usr/local/include
+  )
+
+FIND_PATH(DBUS_ARCH_INCLUDE_DIR dbus/dbus-arch-deps.h
+    ${_DBUS_PC_INCLUDE_DIRS}
+    /usr/lib${LIB_SUFFIX}/include
+    /usr/lib${LIB_SUFFIX}/dbus-1.0/include
+    /usr/lib64/include
+    /usr/lib64/dbus-1.0/include
+    /usr/lib/include
+    /usr/lib/dbus-1.0/include
+  )
+
+FIND_LIBRARY(DBUS_LIBRARIES NAMES dbus-1 dbus
+    PATHS
+     ${_DBUS_PC_LIBDIR}
+  )
+
 endif (DBUS_FOUND)
 
 include_directories (${DBUS_INCLUDE_DIR})
 include_directories (${DBUS_ARCH_INCLUDE_DIR})
-include_directories (${DBUS_LIBDIR})
+#include_directories (${DBUS_LIBDIR})
 
 
 #DBus-Glib

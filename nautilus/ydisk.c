@@ -31,6 +31,9 @@ typedef struct _YdiskExtension
 	DBusGConnection * connection;
 	DBusGProxy  *proxy;
 	GError *error;
+
+	//==//
+	DBusGProxy *proxy_for_check;
 	
 } YdiskExtension;
 
@@ -67,6 +70,14 @@ static ydisk_extension_instance_init (YdiskExtension *inst) {
 					"edu.ydisk.Service",
 					"/edu/ydisk/YdiskObject",
 					"edu.ydisk.Service.Methods");
+	//==//
+	g_warning("init proxy_for_check");	
+	inst->proxy_for_check = dbus_g_proxy_new_for_name (inst->connection,
+					"org.freedesktop.DBus",
+					"/org/freedesktop/DBus",
+					"org.freedesktop.DBus");
+	if (inst->proxy_for_check != NULL)
+		g_print("init proxy_for_check NOT null");
 }
 
 
@@ -112,7 +123,7 @@ static void Send_signal (YdiskExtension * yde, char * dir_name, char * service_m
 			g_printerr ("Error %s:\n", yde->error->message);
 
 		g_error_free (yde->error);
-		exit (1);
+		//exit (1);
 	}*/
 	
 	g_warning("Out_of_Send_signal");
@@ -123,8 +134,8 @@ static void Sync_Unsync (NautilusMenuItem *item, YdiskExtension * yde, char item
 {
 	g_warning("Sync_Unsync");
 
-	char * service_method;
-	char * data_files;
+	char * service_method = NULL;
+	char * data_files = NULL;
 
 	switch (item_id)
 	{
@@ -163,10 +174,6 @@ static void Sync_Unsync (NautilusMenuItem *item, YdiskExtension * yde, char item
 
 		l = l->next;
 	}
-	
-
-	//g_free (data_files);
-	//g_free (service_method);
 
 }  
 
@@ -225,6 +232,25 @@ static GList * ydisk_nautilus_get_menu_items (NautilusMenuProvider * provider,
 							GtkWidget * window, 
 							GList * files)
 {
+	
+	//==//
+	g_warning("CHECKING");
+	bool is_exists;
+	/*if (provider != NULL)
+	{
+	YdiskExtension * yde = YDISK_EXTENSION (provider);
+	if (yde->proxy_for_check == NULL)
+		g_warning("PROXY FOR CHECK IS NULL");
+	dbus_g_proxy_call (yde->proxy_for_check, "NameHasOwner", &yde->error, G_TYPE_STRING, "org.freedesktop.secrets", G_TYPE_INVALID, G_TYPE_BOOLEAN, is_exists, G_TYPE_INVALID);
+	if (is_exists)
+		g_print("Exists");
+	else
+		g_print("NO exists");	
+	}*/
+
+	//g_printerr ("Error %s:\n", yde->error->message);
+	//g_warning (listnames[0]);
+
 	g_warning("ydisk_nautilus_get_menu_items");
 
 	GList *items = NULL;

@@ -8,3 +8,5 @@ DBusGMainLoop(set_as_default=True)
 
 Yindicator = ydiskindicator.YdiskTray()
 Yindicator.start()
+
+

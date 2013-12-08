@@ -6,7 +6,7 @@ class Log:
 
     def __init__(self, *args):
         if len(args) == 0:
-            self.log_path = '/usr/share/ydisk/log'
+            self.log_path = '/var/log/ydisk/log.lg'
         else:
             self.log_path = args[0]
 

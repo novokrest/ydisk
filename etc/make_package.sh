@@ -14,6 +14,7 @@ DEB_USR=$DEB_ROOT/usr
 DEB_YDISK=$DEB_USR/bin/ydisk
 DEB_SHARE=$DEB_USR/share/ydisk
 DEB_RC=$DEB_SHARE/rc
+DEB_LOG=$DEB_ROOT/var/log/ydisk
 DEB_NAUTILUS=$DEB_USR/lib/nautilus/extensions-3.0
 
 SRC_LIB=../nautilus/libydisk.so
@@ -29,6 +30,7 @@ mkdir -p $DEB_DEBIAN
 mkdir -p $DEB_YDISK
 mkdir -p $DEB_NAUTILUS
 mkdir -p $DEB_RC
+mkdir -p $DEB_LOG
 
 echo "Package: ydisk
 Version: 1.0.0
@@ -59,7 +61,7 @@ chmod 775 $DEB_POSTINST
 echo "#!/bin/bash
 python /usr/bin/ydisk/main.py" > $DEB_USR/bin/ydisk.sh
 
-touch $DEB_SHARE/log
+touch $DEB_LOG/log.lg
 
 cp $SRC_LIB $DEB_NAUTILUS
 cp $SRC_RC/* $DEB_RC

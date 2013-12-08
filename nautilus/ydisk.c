@@ -15,8 +15,6 @@
 #include <stdlib.h>
 
 
-
-
 /*Extension*/
 typedef struct
 {
@@ -29,11 +27,10 @@ typedef struct _YdiskExtension
 	GObject parent_slot;
 
 	DBusGConnection * connection;
-	DBusGProxy  *proxy;
+	DBusGProxy  *ydisk_proxy;
 	GError *error;
 
-	//==//
-	DBusGProxy *proxy_for_check;
+	DBusGProxy *check_proxy;
 	
 } YdiskExtension;
 
@@ -48,11 +45,14 @@ static GType ydisk_extension_type;
 
 static void ydisk_extension_finalize (GObject *object);
 
-static bool ChooseDirectory (GList * files);
-static void Do_synchronize (NautilusMenuItem *item, gpointer user_data);
-static void Do_unsynchronize (NautilusMenuItem *item, gpointer user_data);
-static void Sync_Unsync (NautilusMenuItem *item, YdiskExtension * yde, char item_id);
-static void Send_signal (YdiskExtension * yde, char * dir_name, char * service_method);
+static bool check_directory (GList * files);
+static bool check_service (gpointer provider, char * service_name);
+static void synchronize (NautilusMenuItem *item, gpointer user_data);
+static void synchronize_readonly (NautilusMenuItem *item, gpointer user_data);
+static void synchronize_overwrite (NautilusMenuItem *item, gpointer user_data);
+static void unsynchronize (NautilusMenuItem *item, gpointer user_data);
+static void create_sygnal (NautilusMenuItem *item, YdiskExtension * yde, char * service_method, char * data_files);
+static void send_signal (YdiskExtension * yde, char * dir_name, char * service_method);
 
 /*Definitions*/
 
@@ -66,18 +66,15 @@ static ydisk_extension_instance_init (YdiskExtension *inst) {
 	
 	inst->error = NULL;
 	inst->connection = dbus_g_bus_get (DBUS_BUS_SESSION, &inst->error);
-	inst->proxy = dbus_g_proxy_new_for_name (inst->connection,
+	inst->ydisk_proxy = dbus_g_proxy_new_for_name (inst->connection,
 					"edu.ydisk.Service",
 					"/edu/ydisk/YdiskObject",
 					"edu.ydisk.Service.Methods");
-	//==//
-	g_warning("init proxy_for_check");	
-	inst->proxy_for_check = dbus_g_proxy_new_for_name (inst->connection,
+	
+	inst->check_proxy = dbus_g_proxy_new_for_name (inst->connection,
 					"org.freedesktop.DBus",
 					"/org/freedesktop/DBus",
 					"org.freedesktop.DBus");
-	if (inst->proxy_for_check != NULL)
-		g_print("init proxy_for_check NOT null");
 }
 
 
@@ -91,74 +88,23 @@ GType ydisk_extension_get_type (void)
 
 /*Interface*/
 
-static void Send_signal (YdiskExtension * yde, char * dir_name, char * service_method) 
+static void send_signal (YdiskExtension * yde, char * dir_name, char * service_method) 
 {
-	g_warning("Send_signal");	
-
 	if (yde->connection == NULL)
 	{
-		
 		g_printerr ("Failed to open connection to bus: %s\n", yde->error->message);
 		g_error_free (yde->error);
 		exit (1);
 	}
 	
-	if (yde->proxy != NULL)
-	{
-		g_warning("NOT NULL PROXY");
-	}
-	
 	yde->error = NULL;
 	
-	dbus_g_proxy_call_no_reply (yde->proxy, service_method, G_TYPE_STRING, dir_name, G_TYPE_INVALID);
-
-	/*if (!dbus_g_proxy_call (yde->proxy, service_method, &yde->error, G_TYPE_STRING, dir_name, G_TYPE_INVALID, G_TYPE_INVALID))
-	{
-		g_warning("ERROR_DBUS_PROXY_CALL");
-		if (yde->error->domain == DBUS_GERROR && yde->error->code == DBUS_GERROR_REMOTE_EXCEPTION)
-			g_printerr ("Caught remote method exception %s: %s",
-					dbus_g_error_get_name (yde->error),
-					yde->error->message);
-		else
-			g_printerr ("Error %s:\n", yde->error->message);
-
-		g_error_free (yde->error);
-		//exit (1);
-	}*/
-	
-	g_warning("Out_of_Send_signal");
+	dbus_g_proxy_call_no_reply (yde->ydisk_proxy, service_method, G_TYPE_STRING, dir_name, G_TYPE_INVALID);
 }
 
 
-static void Sync_Unsync (NautilusMenuItem *item, YdiskExtension * yde, char item_id)
+static void create_sygnal (NautilusMenuItem *item, YdiskExtension * yde, char * service_method, char * data_files)
 {
-	g_warning("Sync_Unsync");
-
-	char * service_method = NULL;
-	char * data_files = NULL;
-
-	switch (item_id)
-	{
-		case 's':
-			g_warning("Synchronize");
-			service_method = "SyncMethod";
-			data_files = "sync_dirs";
-			break;
-
-		case 'u':	
-			g_warning("Unsynchronize");
-			service_method = "UnsyncMethod";
-			data_files = "unsync_dirs";
-			break;
-
-		case 'd':
-			g_warning("Set_default_dir");
-			service_method = "SetDefaultDirMethod";
-			data_files = "default_dir";
-			break;
-	}
-	
-
 	GList * files = g_object_get_data ((GObject*)item, data_files);
 	GList * l = files;
 	
@@ -168,8 +114,7 @@ static void Sync_Unsync (NautilusMenuItem *item, YdiskExtension * yde, char item
 		char * dir_name;
 		dir_name = nautilus_file_info_get_uri (file);
 	
-		g_print("Files for %s: %s\n",service_method, dir_name);
-		Send_signal (yde, dir_name, service_method);
+		send_signal (yde, dir_name, service_method);
 		g_free(dir_name);
 
 		l = l->next;
@@ -178,37 +123,43 @@ static void Sync_Unsync (NautilusMenuItem *item, YdiskExtension * yde, char item
 }  
 
 
-static void Do_synchronize (NautilusMenuItem *item, gpointer user_data)
+static void synchronize (NautilusMenuItem *item, gpointer user_data)
 {
-	g_warning("Do_synchronize");
-
 	YdiskExtension * yde = YDISK_EXTENSION (user_data);
-	Sync_Unsync (item, yde, 's');
+	create_sygnal (item, yde, "SyncMethod", "dirs");
 }
 
 
-static void Do_unsynchronize (NautilusMenuItem *item, gpointer user_data)
+static void synchronize_readonly (NautilusMenuItem *item, gpointer user_data)
 {
-	g_warning("Do_unsynchronize");
-
 	YdiskExtension * yde = YDISK_EXTENSION (user_data);
-	Sync_Unsync (item, yde, 'u');
+	create_sygnal (item, yde, "SyncROMethod", "dirs");
 }
 
 
-static void Do_set_default_dir (NautilusMenuItem *item, gpointer user_data)
+static void synchronize_overwrite (NautilusMenuItem *item, gpointer user_data)
 {
-	g_warning("Do_set_default_dir");
-
 	YdiskExtension * yde = YDISK_EXTENSION (user_data);
-	Sync_Unsync (item, yde, 'd');
+	create_sygnal (item, yde, "SyncOWMethod", "dirs");
 }
 
 
-static bool ChooseDirectory (GList * files)
+static void unsynchronize (NautilusMenuItem *item, gpointer user_data)
 {
-	g_warning("ChooseDirectory");
+	YdiskExtension * yde = YDISK_EXTENSION (user_data);
+	create_sygnal (item, yde, "UnsyncMethod", "dirs");
+}
 
+
+static void set_default_dir (NautilusMenuItem *item, gpointer user_data)
+{
+	YdiskExtension * yde = YDISK_EXTENSION (user_data);
+	create_sygnal (item, yde, "SetDefaultDirMethod", "dirs");
+}
+
+
+static bool check_directory (GList * files)
+{
 	if (files != NULL)
 	{
 		GList *l = nautilus_file_info_list_copy (files);
@@ -228,65 +179,83 @@ static bool ChooseDirectory (GList * files)
 }
 
 
+static bool check_service (gpointer provider, char * service_name)
+{
+	bool service_exists = false;
+	
+	if (provider != NULL) 
+	{
+	YdiskExtension * yde = YDISK_EXTENSION (provider);
+
+	yde->error = NULL;
+
+	if (!dbus_g_proxy_call (yde->check_proxy, "NameHasOwner", &yde->error, G_TYPE_STRING, service_name, G_TYPE_INVALID, G_TYPE_BOOLEAN, &service_exists, G_TYPE_INVALID))
+		{
+			if (yde->error->domain == DBUS_GERROR && yde->error->code == DBUS_GERROR_REMOTE_EXCEPTION)
+			{
+				g_printerr ("Caught remote method exception %s: %s",
+					dbus_g_error_get_name (yde->error),
+					yde->error->message);
+			}
+			else
+				g_printerr ("Error %s:\n", yde->error->message);
+
+			g_error_free (yde->error);
+		}
+	}
+	return service_exists;
+}
+
 static GList * ydisk_nautilus_get_menu_items (NautilusMenuProvider * provider,
 							GtkWidget * window, 
 							GList * files)
 {
-	
-	//==//
-	g_warning("CHECKING");
-	bool is_exists;
-	/*if (provider != NULL)
-	{
-	YdiskExtension * yde = YDISK_EXTENSION (provider);
-	if (yde->proxy_for_check == NULL)
-		g_warning("PROXY FOR CHECK IS NULL");
-	dbus_g_proxy_call (yde->proxy_for_check, "NameHasOwner", &yde->error, G_TYPE_STRING, "org.freedesktop.secrets", G_TYPE_INVALID, G_TYPE_BOOLEAN, is_exists, G_TYPE_INVALID);
-	if (is_exists)
-		g_print("Exists");
-	else
-		g_print("NO exists");	
-	}*/
-
-	//g_printerr ("Error %s:\n", yde->error->message);
-	//g_warning (listnames[0]);
-
-	g_warning("ydisk_nautilus_get_menu_items");
-
 	GList *items = NULL;
 	
-	if (ChooseDirectory(files))
+	if (check_service(provider, "edu.ydisk.Service") && check_directory(files))
 	{	
-		g_warning("after ChooseDirectory");		
-
 		NautilusMenuItem *root_item;
-		NautilusMenuItem *item_sync, *item_unsync, *item_default;
+		NautilusMenuItem *item_sync, *item_sync_ro, *item_sync_ow, *item_unsync, *item_default;
 		root_item = nautilus_menu_item_new ("ydisk", "Ydisk", "root", "ydisk");
 
 		NautilusMenu *sub_menu = nautilus_menu_new ();
 		nautilus_menu_item_set_submenu (root_item, sub_menu);
 
-		item_sync = nautilus_menu_item_new ("sync_item", "_Synchronize", "sync", "ydisk");
-		g_signal_connect (item_sync, "activate", G_CALLBACK(Do_synchronize), provider);
-		g_object_set_data_full ((GObject*)item_sync, "sync_dirs", 
+		item_sync = nautilus_menu_item_new ("item_sync", "_Synchronize", "sync", "None");
+		g_signal_connect (item_sync, "activate", G_CALLBACK(synchronize), provider);
+		g_object_set_data_full ((GObject*)item_sync, "dirs", 
 							nautilus_file_info_list_copy (files),
 							(GDestroyNotify)nautilus_file_info_list_free);
 
-		item_unsync = nautilus_menu_item_new ("unsync_item", "_Unsynchronize", "unsync", "ydisk");
-		g_signal_connect (item_unsync, "activate", G_CALLBACK(Do_unsynchronize), provider);
-		g_object_set_data_full ((GObject*)item_unsync, "unsync_dirs", 
+		item_sync_ro = nautilus_menu_item_new ("item_sync_ro", "_Synchronize read-only", "sync_ro", "None");
+		g_signal_connect (item_sync_ro, "activate", G_CALLBACK(synchronize_readonly), provider);
+		g_object_set_data_full ((GObject*)item_sync_ro, "dirs", 
 							nautilus_file_info_list_copy (files),
 							(GDestroyNotify)nautilus_file_info_list_free);
 
-		item_default = nautilus_menu_item_new ("default_item", "_Set as local disk", "default", "ydisk");
-		g_signal_connect (item_default, "activate", G_CALLBACK(Do_set_default_dir), provider);
-		g_object_set_data_full ((GObject*)item_default, "default_dir", 
+		item_sync_ow = nautilus_menu_item_new ("item_sync_ow", "_Synchronize overwrite", "sync_ow", "None");
+		g_signal_connect (item_sync_ow, "activate", G_CALLBACK(synchronize_overwrite), provider);
+		g_object_set_data_full ((GObject*)item_sync_ow, "dirs", 
+							nautilus_file_info_list_copy (files),
+							(GDestroyNotify)nautilus_file_info_list_free);	
+
+		item_unsync = nautilus_menu_item_new ("item_unsync", "_Unsynchronize", "unsync", "None");
+		g_signal_connect (item_unsync, "activate", G_CALLBACK(unsynchronize), provider);
+		g_object_set_data_full ((GObject*)item_unsync, "dirs", 
 							nautilus_file_info_list_copy (files),
 							(GDestroyNotify)nautilus_file_info_list_free);
+
+		/*item_default = nautilus_menu_item_new ("default_item", "_Set as local disk", "default", "None");
+		g_signal_connect (item_default, "activate", G_CALLBACK(set_default_dir), provider);
+		g_object_set_data_full ((GObject*)item_default, "dirs", 
+							nautilus_file_info_list_copy (files),
+							(GDestroyNotify)nautilus_file_info_list_free);*/
 
 		nautilus_menu_append_item (sub_menu, item_sync);
+		nautilus_menu_append_item (sub_menu, item_sync_ro);
+		nautilus_menu_append_item (sub_menu, item_sync_ow);
 		nautilus_menu_append_item (sub_menu, item_unsync);
-		nautilus_menu_append_item (sub_menu, item_default);
+		//nautilus_menu_append_item (sub_menu, item_default);
 	
 		if (root_item != NULL) {
 			items = g_list_append (items, root_item);
@@ -351,8 +320,11 @@ static void ydisk_extension_finalize (GObject *object)
 {
 	YdiskExtension * yde = YDISK_EXTENSION(object);
 
-	if (yde->proxy != NULL)
-		g_object_unref (yde->proxy);
+	if (yde->ydisk_proxy != NULL)
+		g_object_unref (yde->ydisk_proxy);
+
+	if (yde->check_proxy != NULL)
+		g_object_unref (yde->check_proxy);
 
 	if (yde->connection)
 		g_object_unref (yde->connection);

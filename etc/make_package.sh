@@ -12,7 +12,8 @@ DEB_POSTINST=$DEB_DEBIAN/postinst
 
 DEB_USR=$DEB_ROOT/usr
 DEB_YDISK=$DEB_USR/bin/ydisk
-DEB_RC=$DEB_USR/share/ydisk/rc
+DEB_SHARE=$DEB_USR/share/ydisk
+DEB_RC=$DEB_SHARE/rc
 DEB_NAUTILUS=$DEB_USR/lib/nautilus/extensions-3.0
 
 SRC_LIB=../nautilus/libydisk.so
@@ -57,6 +58,8 @@ chmod 775 $DEB_POSTINST
 
 echo "#!/bin/bash
 python /usr/bin/ydisk/main.py" > $DEB_USR/bin/ydisk.sh
+
+touch $DEB_SHARE/log
 
 cp $SRC_LIB $DEB_NAUTILUS
 cp $SRC_RC/* $DEB_RC

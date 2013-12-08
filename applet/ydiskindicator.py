@@ -9,6 +9,8 @@ import subprocess
 import getpass
 from re import split
 
+import config
+import log
 
 class YdiskDBus(dbus.service.Object):
     def __init__(self):
@@ -29,7 +31,7 @@ class YdiskDBus(dbus.service.Object):
 class YdiskTray(threading.Thread, dbus.service.Object):
 
     #Icons
-    path = "/home/novokrest/PycharmProjects/SRW/icons/"
+    path = "/usr/share/ydisk/rc/"
     mainIcon = path + "Ydisk_UFO_main.png"
     attentionIcon = path + "Ydisk_sync.png"
 
@@ -42,15 +44,13 @@ class YdiskTray(threading.Thread, dbus.service.Object):
 
     #Commands
 
-    sync_cmd = "yandex-disk sync -d "
+    sync_cmd = 'yandex-disk sync -d '
+    sync_ro_cmd = 'yandex-disk sync --read-only -d '
+    sync_ow_cmd = 'yandex-disk sync --read-only --overwrite -d '
+
     start_cmd = 'yandex-disk start'
     stop_cmd = 'yandex-disk stop'
-
-    config_file_buf = ""
-    config_file_path = ""
-
-    exclude_dirs_list = []
-    default_dir = ""
+    status_cmd = 'yandex-disk status'
 
 
     def __init__(self):
@@ -81,7 +81,7 @@ class YdiskTray(threading.Thread, dbus.service.Object):
         self.quitIconItem = gtk.ImageMenuItem("Quit")
         self.quitIconItem.set_image(quitIcon)
         self.quitIconItem.set_always_show_image(True)
-        self.quitIconItem.connect("activate", gtk.main_quit)
+        self.quitIconItem.connect("activate", self.quit)
         self.quitIconItem.show()
         self.menu.append(self.quitIconItem)
 
@@ -91,76 +91,71 @@ class YdiskTray(threading.Thread, dbus.service.Object):
         self.busName = dbus.service.BusName('edu.ydisk.Service', self.bus)
         dbus.service.Object.__init__(self, self.busName, '/edu/ydisk/YdiskObject')
 
-        self.ReadConfig()
-
-
-    def ReadConfig(self):
-
-        self.config_file_path = '/home/' + getpass.getuser() + '/.config/yandex-disk/config.cfg'
-
-        with open(self.config_file_path, mode='r') as config_file:
-            for line in config_file.readlines():
-                if 'exclude-dirs=' in line:
-                    self.exclude_dirs_list = line.split('\"')[1].split(',')
-                    if '' in self.exclude_dirs_list:
-                        self.exclude_dirs_list.remove('')
-                    continue
-                if 'dir=' in line:
-                    self.default_dir = line.split('\"')[1]
-                    continue
-                if line == "\n":
-                    continue
-                self.config_file_buf += line
-
-
-
-    def WriteConfig(self):
-
-        with open(self.config_file_path, mode='w') as config_file:
-
-            default_dir_line = 'dir=\"' + self.default_dir + '\"\n'
-            config_file.write(default_dir_line)
-
-            exclude_line = 'exclude-dirs=\"' + ','.join(self.exclude_dirs_list) + '\"\n'
-            config_file.write(exclude_line)
-
-            config_file.write(self.config_file_buf)
+        self.logfile = log.Log()
+        self.configfile = config.Config()
+        self.configfile.ReadConfig()
 
 
     def exec_command(self, cmd):
 
         self.yInd.set_status(appindicator.STATUS_ATTENTION)
-        p = subprocess.Popen(cmd, shell=True)
-        p.wait()
+        log = open(self.logfile.log_path, 'a')
+        p = subprocess.call(cmd, stdout=log, stderr=log, shell=True)
+        log.close()
         self.yInd.set_status(appindicator.STATUS_ACTIVE)
 
-        if not p.returncode:
-            print("OK")
+        if not p:
+            self.logfile.PrintLog('OK\n')
 
 
     @dbus.service.method('edu.ydisk.Service.Methods')
     def SyncMethod(self, message):
 
         sync_dir = message[7:]
-        print ("I receive sync msg: %s\n" % sync_dir)
+        self.logfile.PrintLog("Directory for synchronization: %s\n" % sync_dir)
 
-        if sync_dir in self.exclude_dirs_list:
-            self.exclude_dirs_list.remove(sync_dir)
-            self.WriteConfig()
+        if sync_dir in self.configfile.exclude_dirs_list:
+            self.configfile.exclude_dirs_list.remove(sync_dir)
+            self.configfile.WriteConfig()
 
         self.exec_command(self.sync_cmd + sync_dir)
+
+
+    @dbus.service.method('edu.ydisk.Service.Methods')
+    def SyncROMethod(self, message):
+
+        sync_dir = message[7:]
+        self.logfile.PrintLog("Directory for synchronization read-only: %s\n" % sync_dir)
+
+        if sync_dir in self.configfile.exclude_dirs_list:
+            self.configfile.exclude_dirs_list.remove(sync_dir)
+            self.configfile.WriteConfig()
+
+        self.exec_command(self.sync_ro_cmd + sync_dir)
+
+
+    @dbus.service.method('edu.ydisk.Service.Methods')
+    def SyncOWMethod(self, message):
+
+        sync_dir = message[7:]
+        self.logfile.PrintLog("Directory for synchronization read-only overwrite: %s\n" % sync_dir)
+
+        if sync_dir in self.configfile.exclude_dirs_list:
+            self.configfile.exclude_dirs_list.remove(sync_dir)
+            self.configfile.WriteConfig()
+
+        self.exec_command(self.sync_ow_cmd + sync_dir)
 
 
     @dbus.service.method('edu.ydisk.Service.Methods')
     def UnsyncMethod(self, message):
 
         unsync_dir = message[7:]
-        print ("I receive unsync msg: %s\n" % unsync_dir)
+        self.logfile.PrintLog("Directory for unsynchronization: %s\n" % unsync_dir)
 
-        if not (unsync_dir in self.exclude_dirs_list):
-            print(self.exclude_dirs_list, unsync_dir)
-            self.exclude_dirs_list.append(unsync_dir)
-            self.WriteConfig()
+        if not (unsync_dir in self.configfile.exclude_dirs_list):
+            self.configfile.exclude_dirs_list.append(unsync_dir)
+            self.configfile.WriteConfig()
 
 
     @dbus.service.method('edu.ydisk.Service.Methods')
@@ -168,9 +163,9 @@ class YdiskTray(threading.Thread, dbus.service.Object):
 
         default_dir = message[7:]
         print ("I receive default_dir msg: %s\n" % default_dir)
-        if self.default_dir != default_dir:
-            self.default_dir = default_dir
-            self.WriteConfig()
+        if self.configfile.default_dir != default_dir:
+            self.configfile.default_dir = default_dir
+            self.configfile.WriteConfig()
 
 
     def run(self):
@@ -180,3 +175,7 @@ class YdiskTray(threading.Thread, dbus.service.Object):
         #loop = gobject.MainLoop()
         #loop.run()
         gtk.threads_leave()
+
+    def quit(self, widget):
+        self.bus.close()
+        gtk.main_quit()

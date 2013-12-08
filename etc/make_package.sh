@@ -37,7 +37,7 @@ Version: 1.0.0
 Section: utils
 Priority: extra
 Architecture: all
-Depends: libc6, libglib2.0-0, libdbus-1-3, libdbus-glib-1-2
+Depends: libc6, libglib2.0-0, libdbus-1-3, libdbus-glib-1-2, libnautilus-extension1 | libnautilus-extension1a, yandex-disk
 Maintainer: Novokreshchenov Konstantin <novokrest013@gmail.com>
 Description: GUI for YandexDisk" > $DEB_CONTROL
 

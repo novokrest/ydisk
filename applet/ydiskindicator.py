@@ -6,8 +6,6 @@ import threading
 import dbus
 import dbus.service
 import subprocess
-import getpass
-from re import split
 
 import config
 import log
@@ -99,20 +97,23 @@ class YdiskTray(threading.Thread, dbus.service.Object):
     def exec_command(self, cmd):
 
         self.yInd.set_status(appindicator.STATUS_ATTENTION)
-        log = open(self.logfile.log_path, 'a')
-        p = subprocess.call(cmd, stdout=log, stderr=log, shell=True)
-        log.close()
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        output, error = p.communicate()
+        self.logfile.log.write(output + error)
+        self.logfile.PrintLog()
         self.yInd.set_status(appindicator.STATUS_ACTIVE)
 
         if not p:
-            self.logfile.PrintLog('OK\n')
+            self.logfile.log.write('OK\n')
+            self.logfile.PrintLog()
 
 
     @dbus.service.method('edu.ydisk.Service.Methods')
     def SyncMethod(self, message):
 
         sync_dir = message[7:]
-        self.logfile.PrintLog("Directory for synchronization: %s\n" % sync_dir)
+        self.logfile.log.write("Directory for synchronization: %s\n" % sync_dir)
+        self.logfile.PrintLog()
 
         if sync_dir in self.configfile.exclude_dirs_list:
             self.configfile.exclude_dirs_list.remove(sync_dir)
@@ -125,7 +126,8 @@ class YdiskTray(threading.Thread, dbus.service.Object):
     def SyncROMethod(self, message):
 
         sync_dir = message[7:]
-        self.logfile.PrintLog("Directory for synchronization read-only: %s\n" % sync_dir)
+        self.logfile.log.write("Directory for synchronization read-only: %s\n" % sync_dir)
+        self.logfile.PrintLog()
 
         if sync_dir in self.configfile.exclude_dirs_list:
             self.configfile.exclude_dirs_list.remove(sync_dir)
@@ -138,7 +140,8 @@ class YdiskTray(threading.Thread, dbus.service.Object):
     def SyncOWMethod(self, message):
 
         sync_dir = message[7:]
-        self.logfile.PrintLog("Directory for synchronization read-only overwrite: %s\n" % sync_dir)
+        self.logfile.log.write("Directory for synchronization read-only overwrite: %s\n" % sync_dir)
+        self.logfile.PrintLog()
 
         if sync_dir in self.configfile.exclude_dirs_list:
             self.configfile.exclude_dirs_list.remove(sync_dir)
@@ -151,7 +154,8 @@ class YdiskTray(threading.Thread, dbus.service.Object):
     def UnsyncMethod(self, message):
 
         unsync_dir = message[7:]
-        self.logfile.PrintLog("Directory for unsynchronization: %s\n" % unsync_dir)
+        self.logfile.log.write('Directory for unsynchronization: %s\n' % unsync_dir)
+        self.logfile.PrintLog()
 
         if not (unsync_dir in self.configfile.exclude_dirs_list):
             self.configfile.exclude_dirs_list.append(unsync_dir)

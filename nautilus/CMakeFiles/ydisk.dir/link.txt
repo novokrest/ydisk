@@ -1,0 +1,1 @@
+/usr/bin/gcc  -fPIC    -shared -Wl,-soname,libydisk.so -o libydisk.so CMakeFiles/ydisk.dir/ydisk.c.o -ldbus-1 -ldbus-glib-1 -ldbus-1 -ldbus-glib-1 

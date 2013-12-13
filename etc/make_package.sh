@@ -43,6 +43,8 @@ Description: GUI for YandexDisk" > $DEB_CONTROL
 
 echo "#!/bin/bash
 chmod +x /usr/bin/ydisk.sh
+chmod 755 /usr/bin/ydisk/*
+chmod 664 /usr/share/ydisk/rc/*
 
 if [ ! -d $VAR_DIR ]; then
 	mkdir -p $VAR_DIR
@@ -69,7 +71,6 @@ cp $SRC_LIB $DEB_NAUTILUS
 cp -R $SRC_RC/* $DEB_RC
 cp -R $SRC_APPLET/* $DEB_YDISK
 
-chmod 755 $DEB_ROOT
-#sudo chown -R root:root $DEB_ROOT
+sudo chown -R root:root $DEB_ROOT
 sudo dpkg-deb --build $DEB_ROOT ../$DEB_NAME
 sudo rm -rf $DEB_ROOT

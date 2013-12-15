@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 2.8)
 
 project(library)
 
+#?????
+add_definitions(-D_FORTIFY_SOURCE=2)
+set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,-z,relro")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,relro")
+
 #Nautilus
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(NAUTILUS_EXTENSION REQUIRED libnautilus-extension)

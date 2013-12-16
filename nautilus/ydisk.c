@@ -50,7 +50,9 @@ static bool check_service (gpointer provider, char * service_name);
 static void synchronize (NautilusMenuItem *item, gpointer user_data);
 static void synchronize_readonly (NautilusMenuItem *item, gpointer user_data);
 static void synchronize_overwrite (NautilusMenuItem *item, gpointer user_data);
-static void unsynchronize (NautilusMenuItem *item, gpointer user_data);
+/*static void unsynchronize_on (NautilusMenuItem *item, gpointer user_data);*/
+static void unsynchronize_on (NautilusMenuItem *item, gpointer user_data);
+static void unsynchronize_off (NautilusMenuItem *item, gpointer user_data);
 static void create_sygnal (NautilusMenuItem *item, YdiskExtension * yde, char * service_method, char * data_files, char * mode);
 static void send_signal (YdiskExtension * yde, char * dir_name, char * service_method, char * mode);
 
@@ -144,10 +146,24 @@ static void synchronize_overwrite (NautilusMenuItem *item, gpointer user_data)
 }
 
 
-static void unsynchronize (NautilusMenuItem *item, gpointer user_data)
+/*static void unsynchronize (NautilusMenuItem *item, gpointer user_data)
 {
 	YdiskExtension * yde = YDISK_EXTENSION (user_data);
 	create_sygnal (item, yde, "unsync", "dirs", NULL);
+}*/
+
+
+static void unsynchronize_on (NautilusMenuItem *item, gpointer user_data)
+{
+	YdiskExtension * yde = YDISK_EXTENSION (user_data);
+	create_sygnal (item, yde, "unsync", "dirs", "on");
+}
+
+
+static void unsynchronize_off (NautilusMenuItem *item, gpointer user_data)
+{
+	YdiskExtension * yde = YDISK_EXTENSION (user_data);
+	create_sygnal (item, yde, "unsync", "dirs", "off");
 }
 
 
@@ -208,11 +224,16 @@ static GList * ydisk_nautilus_get_menu_items (NautilusMenuProvider * provider,
 	if (check_service(provider, "edu.ydisk.Service") && check_directory(files))
 	{	
 		NautilusMenuItem *root_item;
-		NautilusMenuItem *item_sync, *item_sync_ro, *item_sync_ow, *item_unsync, *item_default;
-		root_item = nautilus_menu_item_new ("ydisk", "Ydisk", "root", "ydisk");
+		NautilusMenuItem *item_sync, *item_sync_ro, *item_sync_ow, *item_unsync, *item_unsync_on, *item_unsync_off;
+
+		root_item = nautilus_menu_item_new ("item_root", "Ydisk", "root", "None");
+		item_unsync = nautilus_menu_item_new ("item_unsync", "_Unsynchronize", "unsync", "None");
 
 		NautilusMenu *sub_menu = nautilus_menu_new ();
 		nautilus_menu_item_set_submenu (root_item, sub_menu);
+
+		NautilusMenu *unsync_menu = nautilus_menu_new ();
+		nautilus_menu_item_set_submenu (item_unsync, unsync_menu);	
 
 		item_sync = nautilus_menu_item_new ("item_sync", "_Synchronize", "sync", "None");
 		g_signal_connect (item_sync, "activate", G_CALLBACK(synchronize), provider);
@@ -232,11 +253,26 @@ static GList * ydisk_nautilus_get_menu_items (NautilusMenuProvider * provider,
 							nautilus_file_info_list_copy (files),
 							(GDestroyNotify)nautilus_file_info_list_free);	
 
-		item_unsync = nautilus_menu_item_new ("item_unsync", "_Unsynchronize", "unsync", "None");
+		/*item_unsync = nautilus_menu_item_new ("item_unsync", "_Unsynchronize", "unsync", "None");
 		g_signal_connect (item_unsync, "activate", G_CALLBACK(unsynchronize), provider);
 		g_object_set_data_full ((GObject*)item_unsync, "dirs", 
 							nautilus_file_info_list_copy (files),
+							(GDestroyNotify)nautilus_file_info_list_free);*/
+	
+		item_unsync_on = nautilus_menu_item_new ("item_unsync_on", "_ON", "unsync_on", "None");
+		g_signal_connect (item_unsync_on, "activate", G_CALLBACK(unsynchronize_on), provider);
+		g_object_set_data_full ((GObject*)item_unsync_on, "dirs", 
+							nautilus_file_info_list_copy (files),
 							(GDestroyNotify)nautilus_file_info_list_free);
+
+		item_unsync_off = nautilus_menu_item_new ("item_unsync_off", "_OFF", "unsync_off", "None");
+		g_signal_connect (item_unsync_off, "activate", G_CALLBACK(unsynchronize_off), provider);
+		g_object_set_data_full ((GObject*)item_unsync_off, "dirs", 
+							nautilus_file_info_list_copy (files),
+							(GDestroyNotify)nautilus_file_info_list_free);
+
+		nautilus_menu_append_item (unsync_menu, item_unsync_on);
+		nautilus_menu_append_item (unsync_menu, item_unsync_off);
 
 		nautilus_menu_append_item (sub_menu, item_sync);
 		nautilus_menu_append_item (sub_menu, item_sync_ro);

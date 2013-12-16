@@ -1,5 +1,6 @@
 import gtk
 import appindicator
+import pynotify
 import threading
 import dbus
 import dbus.service
@@ -17,8 +18,17 @@ class YdiskTray(threading.Thread, dbus.service.Object):
                 "overwrite": "yandex-disk sync --read-only --overwrite -d ",
                 "default": "yandex-disk sync -d "}
 
+    notify_messages = {'readonly': 'Start read-only synchronization:\n%s',
+                      'overwrite': 'Start overwrite synchronization:\n%s',
+                      'default': 'Start folder synchronization:\n%s',
+                      'on': 'Folder add in exclude list:\n%s',
+                      'off': 'Folder delete from exclude list:\n%s',
+                      'success': 'Successfully synchronized:\n%s',
+                      'error': ''}
+
     def __init__(self, path, log_path):
         threading.Thread.__init__(self)
+        pynotify.init('ydisk-notify')
         self.bus = dbus.SessionBus()
         busName = dbus.service.BusName('edu.ydisk.Service', self.bus)
         dbus.service.Object.__init__(self, busName, '/edu/ydisk/YdiskObject')
@@ -66,7 +76,7 @@ class YdiskTray(threading.Thread, dbus.service.Object):
         icon_item.set_always_show_image(True)
         icon_item.connect("activate", callback)
         icon_item.show()
-        return  icon_item
+        return icon_item
 
     def exec_command(self, cmd):
         self.yInd.set_status(appindicator.STATUS_ATTENTION)
@@ -76,20 +86,36 @@ class YdiskTray(threading.Thread, dbus.service.Object):
             logging.info(output)
         else:
             logging.info(error)
+            self.notify_messages['error'] = error
         self.yInd.set_status(appindicator.STATUS_ACTIVE)
+        return p.returncode
 
     @dbus.service.method('edu.ydisk.Service.Methods')
     def sync(self, sync_dir, mode):
         path = sync_dir[7:]
-        logging.info("Directory for %s synchronization: %s\n" % (mode, path))
         self.config.include(path)
-        self.exec_command(self.cmdlines[mode] + path)
+        logging.info("Directory for %s synchronization: %s\n" % (mode, path))
+        self.notify(path, mode)
+        result = self.exec_command(self.cmdlines[mode] + path)
+        if not result:
+            self.notify(path, 'success')
+        else:
+            self.notify(path, 'error')
 
     @dbus.service.method('edu.ydisk.Service.Methods')
     def unsync(self, unsync_dir, mode):
         path = unsync_dir[7:]
-        logging.info('Directory for unsynchronization: %s\n' % path)
-        self.config.exclude(path)
+        if mode == 'on':
+            self.config.exclude(path)
+        if mode == 'off':
+            self.config.include(path)
+        logging.info('Directory for unsynchronization %s: %s\n' % (mode, path))
+        self.notify(path, mode)
+
+    def notify(self, path, mode):
+        pynotify.Notification("Yandex-disk",
+                              self.notify_messages[mode] % path,
+                              self.path + "Ydisk_UFO.png").show()
 
     def run(self):
         gtk.threads_enter()

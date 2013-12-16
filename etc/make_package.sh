@@ -9,6 +9,7 @@ DEB_ROOT=$ROOT/debian
 DEB_DEBIAN=$DEB_ROOT/DEBIAN
 DEB_CONTROL=$DEB_DEBIAN/control
 DEB_POSTINST=$DEB_DEBIAN/postinst
+DEB_POSTRM=$DEB_DEBIAN/postrm
 
 DEB_USR=$DEB_ROOT/usr
 DEB_YDISK=$DEB_USR/bin/ydisk
@@ -36,10 +37,11 @@ echo "Package: ydisk
 Version: 1.0.0
 Section: utils
 Priority: extra
-Architecture: all
+Architecture: amd64
 Depends: libc6, libglib2.0-0, libdbus-1-3, libdbus-glib-1-2, libnautilus-extension1 | libnautilus-extension1a, yandex-disk, python-gtk2, python-appindicator, python-dbus, python-loggingx
 Maintainer: Novokreshchenov Konstantin <novokrest013@gmail.com>
-Description: GUI for YandexDisk" > $DEB_CONTROL
+Description: GUI for YandexDisk
+Installed-size: 425" > $DEB_CONTROL
 
 echo "#!/bin/bash
 chmod +x /usr/bin/ydisk.sh
@@ -51,6 +53,9 @@ if [ ! -d $VAR_DIR ]; then
 fi
 chmod 777 -R $VAR_DIR
 
+nautilus -q
+nautilus -n
+
 echo \"[Desktop Entry]
 Name=Ydisk
 Comment=GUI for YandexDisk
@@ -61,8 +66,17 @@ Terminal=false
 Type=Application
 Icon=/usr/share/ydisk/rc/Ydisk_UFO_main.png
 Categories=
-Path=/usr/bin/\" > home/$USER/.local/share/applications/ydisk.desktop" > $DEB_POSTINST
+Path=/usr/bin/\" > home/$USER/.local/share/applications/ydisk.desktop " > $DEB_POSTINST
 chmod 755 $DEB_POSTINST
+
+#echo "#!/bin/bash
+#rm /usr/lib/nautilus/extensions-3.0/libydisk.so
+#rm -rf /usr/share/ydisk
+#rm -rf /usr/bin/ydisk
+#rm /usr/bin/ydisk.sh
+#rm /home/novokrest/.local/share/applications/ydisk.desktop" > $DEB_POSTRM
+#chmod 755 $DEB_POSTRM
+
 
 echo "#!/bin/bash
 python /usr/bin/ydisk/main.py" > $DEB_USR/bin/ydisk.sh

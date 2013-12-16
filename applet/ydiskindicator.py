@@ -85,8 +85,8 @@ class YdiskTray(threading.Thread, dbus.service.Object):
         if not p.returncode:
             logging.info(output)
         else:
-            logging.info(error)
-            self.notify_messages['error'] = error
+            logging.info(output + error)
+            self.notify_messages['error'] = output + error + '%s'
         self.yInd.set_status(appindicator.STATUS_ACTIVE)
         return p.returncode
 
@@ -100,7 +100,7 @@ class YdiskTray(threading.Thread, dbus.service.Object):
         if not result:
             self.notify(path, 'success')
         else:
-            self.notify(path, 'error')
+            self.notify('', 'error')
 
     @dbus.service.method('edu.ydisk.Service.Methods')
     def unsync(self, unsync_dir, mode):

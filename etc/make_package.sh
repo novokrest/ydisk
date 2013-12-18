@@ -69,15 +69,6 @@ Categories=
 Path=/usr/bin/\" > home/$USER/.local/share/applications/ydisk.desktop " > $DEB_POSTINST
 chmod 755 $DEB_POSTINST
 
-#echo "#!/bin/bash
-#rm /usr/lib/nautilus/extensions-3.0/libydisk.so
-#rm -rf /usr/share/ydisk
-#rm -rf /usr/bin/ydisk
-#rm /usr/bin/ydisk.sh
-#rm /home/novokrest/.local/share/applications/ydisk.desktop" > $DEB_POSTRM
-#chmod 755 $DEB_POSTRM
-
-
 echo "#!/bin/bash
 python /usr/bin/ydisk/main.py" > $DEB_USR/bin/ydisk.sh
 

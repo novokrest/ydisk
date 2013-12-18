@@ -165,4 +165,5 @@ class YdiskTray(threading.Thread, dbus.service.Object):
     def quit(self, widget):
         self.bus.close()
         self.delete_log()
+        self.exec_command(self.cmdlines["stop"])
         gtk.main_quit()

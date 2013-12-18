@@ -1,0 +1,9 @@
+Package: ydisk
+Version: 1.0.0
+Section: utils
+Priority: extra
+Architecture: amd64
+Depends: libc6, libglib2.0-0, libdbus-1-3, libdbus-glib-1-2, libnautilus-extension1 | libnautilus-extension1a, yandex-disk, python-gtk2, python-appindicator, python-dbus, python-loggingx
+Maintainer: Novokreshchenov Konstantin <novokrest013@gmail.com>
+Description: GUI for YandexDisk
+Installed-size: 425

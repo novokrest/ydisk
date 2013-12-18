@@ -1,0 +1,24 @@
+#!/bin/bash
+chmod +x /usr/bin/ydisk.sh
+chmod 755 /usr/bin/ydisk/*
+chmod 664 /usr/share/ydisk/rc/*
+
+if [ ! -d /var/log/ydisk ]; then
+	mkdir -p /var/log/ydisk
+fi
+chmod 777 -R /var/log/ydisk
+
+nautilus -q
+nautilus -n
+
+echo "[Desktop Entry]
+Name=Ydisk
+Comment=GUI for YandexDisk
+GenericName=Ydisk
+Keywords=Ydisk;ydisk;Yandex;yandexdisk;
+Exec=/usr/bin/ydisk.sh
+Terminal=false
+Type=Application
+Icon=/usr/share/ydisk/rc/Ydisk_UFO_main.png
+Categories=
+Path=/usr/bin/" > home/novokrest/.local/share/applications/ydisk.desktop 
